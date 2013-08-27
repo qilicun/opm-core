@@ -21,6 +21,7 @@
 CMakeLists.txt.user*
 
 # in-tree build with CMake
+build/
 CMakeCache.txt
 CMakeFiles/
 cmake_install.cmake
@@ -41,4 +42,3 @@ install_manifest.txt
 CTestTestfile.cmake
 DartConfiguration.tcl
 Testing/
-build
