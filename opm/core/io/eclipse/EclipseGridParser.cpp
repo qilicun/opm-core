@@ -101,7 +101,8 @@ namespace EclipseKeywords
           string("DEPTHZ"),   string("TOPS"),       string("MAPAXES"),
           string("SWCR"),     string("SWL"),        string("SWU"),
           string("SOWCR"),    string("KRW"),        string("KRWR"),
-          string("KRO"),      string("KRORW"),      string("NTG")
+          string("KRO"),      string("KRORW"),      string("NTG"),
+          string("RHO")
         };
     const int num_floating_fields = sizeof(floating_fields) / sizeof(floating_fields[0]);
 
@@ -561,7 +562,8 @@ void EclipseGridParser::convertToSI()
                    key == "SGAS"     || key == "SWAT"     || key == "SOIL"     ||
                    key == "NTG"      || key == "SWCR"     || key == "SWL"      ||
                    key == "SWU"      || key == "SOWCR"    || key == "KRW"      ||
-                   key == "KRWR"     || key == "KRORW"    || key == "KRO") {
+                   key == "KRWR"     || key == "KRORW"    || key == "KRO"      ||
+                   key == "RHO") /* nonstandard field with no unit logic. use with caution */ {
             unit = 1.0;
             do_convert = false; // Dimensionless keywords...
         } else if (key == "PRESSURE") {
@@ -1176,6 +1178,18 @@ void EclipseGridParser::getNumericErtFields(const string& filename)
     static_cast<void>(filename); // Suppress "unused variable" warning.
     OPM_THROW(std::runtime_error, "Cannot use IMPORT keyword without ERT library support. Reconfigure opm-core with ERT support and recompile.");
 #endif  // HAVE_ERT
+}
+
+// specializations for those types that can be provided; attempts
+// to access other types than these will result in linker error
+template <> const std::vector<int>&
+EclipseGridParser::getValue<int> (const std::string& keyword) const {
+    return this->getIntegerValue(keyword);
+}
+
+template <> const std::vector<double>&
+EclipseGridParser::getValue<double> (const std::string& keyword) const {
+    return this->getFloatingPointValue(keyword);
 }
 
 } // namespace Opm

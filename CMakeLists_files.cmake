@@ -39,7 +39,9 @@ list (APPEND MAIN_SOURCE_FILES
 	opm/core/grid/cpgpreprocess/uniquepoints.c
 	opm/core/io/eclipse/EclipseGridInspector.cpp
 	opm/core/io/eclipse/EclipseGridParser.cpp
+	opm/core/io/eclipse/EclipseWriter.cpp
 	opm/core/io/eclipse/writeECLData.cpp
+	opm/core/io/OutputWriter.cpp
 	opm/core/io/vag/vag.cpp
 	opm/core/io/vtk/writeVtkData.cpp
 	opm/core/linalg/LinearSolverFactory.cpp
@@ -94,9 +96,12 @@ list (APPEND MAIN_SOURCE_FILES
 	opm/core/props/satfunc/SatFuncStone2.cpp
 	opm/core/props/satfunc/SaturationPropsBasic.cpp
 	opm/core/props/satfunc/SaturationPropsFromDeck.cpp
+	opm/core/simulator/BlackoilState.cpp
 	opm/core/simulator/SimulatorCompressibleTwophase.cpp
 	opm/core/simulator/SimulatorIncompTwophase.cpp
+	opm/core/simulator/SimulatorOutput.cpp
 	opm/core/simulator/SimulatorReport.cpp
+	opm/core/simulator/SimulatorState.cpp
 	opm/core/simulator/SimulatorTimer.cpp
 	opm/core/tof/DGBasis.cpp
 	opm/core/tof/TofReorder.cpp
@@ -159,7 +164,8 @@ list (APPEND TEST_SOURCE_FILES
 	tests/test_param.cpp
 	tests/test_blackoilfluid.cpp
 	tests/test_shadow.cpp
-	tests/test_units.cpp
+	tests/test_units.cpp 
+        tests/test_blackoilstate.cpp    
 	)
 
 # originally generated with the command:
@@ -168,6 +174,8 @@ list (APPEND TEST_DATA_FILES
 	tests/extratestdata.xml
 	tests/testdata.xml
 	tests/testFluid.DATA
+        tests/testBlackoilState1.DATA
+        tests/testBlackoilState2.DATA
 	)
 
 # originally generated with the command:
@@ -229,8 +237,10 @@ list (APPEND PUBLIC_HEADER_FILES
 	opm/core/io/eclipse/EclipseGridParser.hpp
 	opm/core/io/eclipse/EclipseGridParserHelpers.hpp
 	opm/core/io/eclipse/EclipseUnits.hpp
+	opm/core/io/eclipse/EclipseWriter.hpp
 	opm/core/io/eclipse/SpecialEclipseFields.hpp
 	opm/core/io/eclipse/writeECLData.hpp
+	opm/core/io/OutputWriter.hpp
 	opm/core/io/vag/vag.hpp
 	opm/core/io/vtk/writeVtkData.hpp
 	opm/core/linalg/LinearSolverFactory.hpp
@@ -298,9 +308,12 @@ list (APPEND PUBLIC_HEADER_FILES
 	opm/core/simulator/BlackoilState.hpp
 	opm/core/simulator/SimulatorCompressibleTwophase.hpp
 	opm/core/simulator/SimulatorIncompTwophase.hpp
+	opm/core/simulator/SimulatorOutput.hpp
 	opm/core/simulator/SimulatorReport.hpp
+	opm/core/simulator/SimulatorState.hpp
 	opm/core/simulator/SimulatorTimer.hpp
 	opm/core/simulator/TwophaseState.hpp
+	opm/core/simulator/TwophaseState_impl.hpp
 	opm/core/simulator/WellState.hpp
 	opm/core/simulator/initState.hpp
 	opm/core/simulator/initState_impl.hpp
@@ -365,6 +378,7 @@ list (APPEND PUBLIC_HEADER_FILES
 	opm/core/utility/parameters/tinyxml/tinystr.h
 	opm/core/utility/parameters/tinyxml/tinyxml.h
 	opm/core/utility/PropertySystem.hpp
+	opm/core/utility/share_obj.hpp
 	opm/core/wells/InjectionSpecification.hpp
 	opm/core/wells/ProductionSpecification.hpp
 	opm/core/wells/WellCollection.hpp
