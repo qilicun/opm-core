@@ -151,7 +151,7 @@ namespace EclipseKeywords
           string("RUNSUM"),  string("EXCEL"),    string("SCHEDULE"),
           string("END"),     string("ENDBOX"),   string("CONTINUE"),
           string("NONNC"),   string("GAS"),      string("DISGAS"),
-          string("FIELD"),   string("POLYMER")
+          string("FIELD"),   string("POLYMER"),  string("LAB")
         };
     const int num_ignore_no_data = sizeof(ignore_no_data) / sizeof(ignore_no_data[0]);
 
@@ -828,7 +828,19 @@ void EclipseGridParser::computeUnits()
         units_.transmissibility = centi*Poise * stb / (day * psia);
         break;
     case Lab:
-        OPM_THROW(std::runtime_error, "Unhandled unit family " << unit_family);
+        units_.length = centi * meter;
+        units_.time = hour;
+        units_.density = milli * kilogram/cubic(centi * meter);
+        units_.polymer_density = milli * kilogram/cubic(centi * meter);
+        units_.pressure = atm;
+        units_.compressibility = 1.0 / atm;
+        units_.viscosity = centi*Poise;
+        units_.permeability = milli*darcy;
+        units_.liqvol_s = cubic(centi * meter);
+        units_.liqvol_r = cubic(centi * meter);
+        units_.gasvol_s = cubic(centi * meter);
+        units_.gasvol_r = cubic(centi * meter);
+        units_.transmissibility = centi*Poise * cubic(centi * meter) / (hour * atm);
         break;
     case Pvtm:
         OPM_THROW(std::runtime_error, "Unhandled unit family " << unit_family);
