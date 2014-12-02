@@ -1,11 +1,3 @@
-/*===========================================================================
-//
-// File: call_petsc.h
-//
-// Created: 2014-05-07 10:21:21 CST
-//
-// Authors: Ming Liu  <miliu@statoil.com>
-//==========================================================================*/
 /*
   Copyright 2014 SINTEF ICT, Applied Mathematics.
   Copyright 2014 STATOIL ASA.
@@ -31,8 +23,9 @@
 extern "C" {
 #endif
 #include <petsc.h>
-int 
-call_Petsc(const int size, const int nonzeros, const int* ia, const int* ja, const double* sa, const double* b, double* x, const KSPType ksp_type, const PCType pc_type, const double rtol, const double atol, const double dtol, const int maxits, const int view_ksp);
+
+KSPConvergedReason
+call_Petsc(const int size, const int nonzeros, const int* ia, const int* ja, const double* sa, const double* b, double* x, const KSPType ksp_type, const PCType pc_type, const double rtol, const double atol, const double dtol, const int maxits, const int view_ksp, int* it, double* res);
 
 #ifdef __cplusplus
 }

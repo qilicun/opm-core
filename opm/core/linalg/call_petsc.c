@@ -1,11 +1,3 @@
-/*===========================================================================
-//
-// File: call_petsc.c
-//
-// Created: 2014-05-07 11:20:08 CST
-//
-// Authors: Ming Liu  <miliu@statoil.com>
-//==========================================================================*/
 /*
   Copyright 2014 SINTEF ICT, Applied Mathematics.
   Copyright 2014 STATOIL ASA.
@@ -151,11 +143,10 @@ to_petsc_mat(const int size, const int nonzeros, const int* ia, const int* ja, c
 }
 
 static int
-solve_system(OEM_DATA* t, KSP_OPT* opts)
+solve_system(OEM_DATA* t, KSP_OPT* opts, PetscInt* its, PetscReal* res, KSPConvergedReason* reason)
 {
-    PetscInt its;
+    PetscInt it;
     PetscReal residual;
-    KSPConvergedReason reason;
     code = KSPCreate(PETSC_COMM_WORLD,&t->ksp);CHKERRQ(code);
     code = KSPSetOperators(t->ksp,t->A,t->A,DIFFERENT_NONZERO_PATTERN);CHKERRQ(code);
     code = KSPGetPC(t->ksp,&t->pc);CHKERRQ(code);
@@ -165,15 +156,17 @@ solve_system(OEM_DATA* t, KSP_OPT* opts)
     code = KSPSetFromOptions(t->ksp);CHKERRQ(code);
     code = KSPSetInitialGuessNonzero(t->ksp,PETSC_TRUE);CHKERRQ(code);
     code = KSPSolve(t->ksp,t->b,t->u);CHKERRQ(code);
-    code = KSPGetConvergedReason(t->ksp, &reason); CHKERRQ(code);
-    code = KSPGetIterationNumber(t->ksp, &its); CHKERRQ(code);
+    code = KSPGetConvergedReason(t->ksp, reason); CHKERRQ(code);
+    code = KSPGetIterationNumber(t->ksp, &it); CHKERRQ(code);
     code = KSPGetResidualNorm(t->ksp, &residual); CHKERRQ(code);
     if (opts->view_ksp) {
         code = KSPView(t->ksp,PETSC_VIEWER_STDOUT_WORLD);
         CHKERRQ(code);
     }
 
-    code = PetscPrintf(PETSC_COMM_WORLD,"KSP Iterations %D, Final Residual %G\n",its,residual);CHKERRQ(code);
+    code = PetscPrintf(PETSC_COMM_WORLD,"KSP Iterations %D, Final Residual %G\n",it,residual);CHKERRQ(code);
+    *its = it;
+    *res = residual;
 
     return 0;
 }
@@ -221,11 +214,12 @@ set_ksp_opts(const KSPType ksp_type, const PCType pc_type, const double rtol, co
     return 0;
 }
 
-int
-call_Petsc(const int size, const int nonzeros, const int* ia, const int* ja, const double* sa, const double* b, double* x, const KSPType ksp_type, const PCType pc_type, const double rtol, const double atol, const double dtol, const int maxits, const int view_ksp)
+KSPConvergedReason
+call_Petsc(const int size, const int nonzeros, const int* ia, const int* ja, const double* sa, const double* b, double* x, const KSPType ksp_type, const PCType pc_type, const double rtol, const double atol, const double dtol, const int maxits, const int view_ksp, int* it, double* res)
 {
     OEM_DATA* t;
     KSP_OPT* opts;
+    KSPConvergedReason reason;
     t = malloc(sizeof(OEM_DATA));
     opts = malloc(sizeof(KSP_OPT));
     assert(t);
@@ -235,10 +229,10 @@ call_Petsc(const int size, const int nonzeros, const int* ia, const int* ja, con
     to_petsc_mat(size, nonzeros, ia, ja, sa, t->A);
     to_petsc_vec(b, t->b);
     set_ksp_opts(ksp_type, pc_type, rtol, atol, dtol, maxits, view_ksp, opts);
-    solve_system(t, opts);  
+    solve_system(t, opts, it, res, &reason);  
     from_petsc_vec(x, t->u);
     destory(t, opts);
 
-    return 0;
+    return reason;
 }
 

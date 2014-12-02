@@ -166,21 +166,24 @@ namespace{
         KSPType ksp_type = ksp.find(ksp_type_);
         PCTypeMap pc(pc_type_);
         PCType pc_type = pc.find(pc_type_);
-        
-        call_Petsc(size, nonzeros, ia, ja, sa, rhs, solution, ksp_type, pc_type, rtol_, atol_, dtol_, maxits_, ksp_view_);
+     
+        LinearSolverReport rep;
+        KSPConvergedReason reason;
+        reason = call_Petsc(size, nonzeros, ia, ja, sa, rhs, solution, ksp_type, pc_type, rtol_, atol_, dtol_, maxits_, ksp_view_, &rep.iterations, &rep.residual_reduction);
 
-        LinearSolverReport rep = {};
-        rep.converged = true;
+        rep.converged = (reason > 0) ? true : false;
+
         return rep;
     }
 
-    void LinearSolverPetsc::setTolerance(const double /*tol*/)
+    void LinearSolverPetsc::setTolerance(const double tol)
     {
+        atol_ = tol;
     }
 
     double LinearSolverPetsc::getTolerance() const
     {
-        return -1.;
+        return atol_;
     }
 
 
