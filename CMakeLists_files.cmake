@@ -31,6 +31,7 @@
 list (APPEND MAIN_SOURCE_FILES
   opm/core/grid/GridHelpers.cpp
 	opm/core/grid/GridManager.cpp
+	opm/core/grid/GridUtilities.cpp
 	opm/core/grid/grid.c
 	opm/core/grid/cart_grid.c
 	opm/core/grid/cornerpoint_grid.c
@@ -39,7 +40,6 @@ list (APPEND MAIN_SOURCE_FILES
 	opm/core/grid/cpgpreprocess/preprocess.c
 	opm/core/grid/cpgpreprocess/uniquepoints.c
 	opm/core/io/eclipse/EclipseGridInspector.cpp
-	opm/core/io/eclipse/EclipseGridParser.cpp
 	opm/core/io/eclipse/EclipseWriter.cpp
 	opm/core/io/eclipse/writeECLData.cpp
 	opm/core/io/OutputWriter.cpp
@@ -87,11 +87,11 @@ list (APPEND MAIN_SOURCE_FILES
 	opm/core/props/pvt/BlackoilPvtProperties.cpp
 	opm/core/props/pvt/PvtPropertiesBasic.cpp
 	opm/core/props/pvt/PvtPropertiesIncompFromDeck.cpp
-	opm/core/props/pvt/SinglePvtDead.cpp
-	opm/core/props/pvt/SinglePvtDeadSpline.cpp
-	opm/core/props/pvt/SinglePvtInterface.cpp
-	opm/core/props/pvt/SinglePvtLiveGas.cpp
-	opm/core/props/pvt/SinglePvtLiveOil.cpp
+	opm/core/props/pvt/PvtDead.cpp
+	opm/core/props/pvt/PvtDeadSpline.cpp
+	opm/core/props/pvt/PvtInterface.cpp
+	opm/core/props/pvt/PvtLiveGas.cpp
+	opm/core/props/pvt/PvtLiveOil.cpp
 	opm/core/props/rock/RockBasic.cpp
 	opm/core/props/rock/RockCompressibility.cpp
 	opm/core/props/rock/RockFromDeck.cpp
@@ -100,7 +100,9 @@ list (APPEND MAIN_SOURCE_FILES
 	opm/core/props/satfunc/SatFuncStone2.cpp
 	opm/core/props/satfunc/SaturationPropsBasic.cpp
 	opm/core/props/satfunc/SaturationPropsFromDeck.cpp
+	opm/core/simulator/AdaptiveSimulatorTimer.cpp
 	opm/core/simulator/BlackoilState.cpp
+	opm/core/simulator/PIDTimeStepControl.cpp
 	opm/core/simulator/SimulatorCompressibleTwophase.cpp
 	opm/core/simulator/SimulatorIncompTwophase.cpp
 	opm/core/simulator/SimulatorOutput.cpp
@@ -150,11 +152,13 @@ list (APPEND MAIN_SOURCE_FILES
 # originally generated with the command:
 # find tests -name '*.cpp' -a ! -wholename '*/not-unit/*' -printf '\t%p\n' | sort
 list (APPEND TEST_SOURCE_FILES
+	tests/test_EclipseWriter.cpp
+	tests/test_compressedpropertyaccess.cpp
 	tests/test_spline.cpp
 	tests/test_propertysystem.cpp
 	tests/test_dgbasis.cpp
 	tests/test_cartgrid.cpp
-        tests/test_ug.cpp
+  tests/test_ug.cpp
 	tests/test_cubic.cpp
 	tests/test_event.cpp
 	tests/test_nonuniformtablelinear.cpp
@@ -171,6 +175,7 @@ list (APPEND TEST_SOURCE_FILES
 	tests/test_parallel_linearsolver.cpp
 	tests/test_param.cpp
 	tests/test_blackoilfluid.cpp
+	tests/test_satfunc.cpp
 	tests/test_shadow.cpp
 	tests/test_equil.cpp
 	tests/test_regionmapping.cpp
@@ -182,6 +187,8 @@ list (APPEND TEST_SOURCE_FILES
 	tests/test_wellsgroup.cpp
 	tests/test_wellcollection.cpp
 	tests/test_timer.cpp
+	tests/test_minpvprocessor.cpp
+	tests/test_gridutilities.cpp
   )
 
 # originally generated with the command:
@@ -192,11 +199,18 @@ list (APPEND TEST_DATA_FILES
 	tests/liveoil.DATA
 	tests/capillary.DATA
 	tests/capillary_overlap.DATA
+	tests/compressed_gridproperty.data
 	tests/deadfluids.DATA
 	tests/equil_livegas.DATA
 	tests/equil_liveoil.DATA
 	tests/equil_rsvd_and_rvvd.DATA
 	tests/wetgas.DATA
+	tests/satfuncStandard.DATA
+	tests/satfuncEPSBase.DATA
+	tests/satfuncEPS_A.DATA
+	tests/satfuncEPS_B.DATA
+	tests/satfuncEPS_C.DATA
+	tests/satfuncEPS_D.DATA
 	tests/testBlackoilState1.DATA
 	tests/testBlackoilState2.DATA
 	tests/wells_manager_data.data
@@ -213,6 +227,7 @@ list (APPEND EXAMPLE_SOURCE_FILES
 	examples/compute_initial_state.cpp
 	examples/compute_tof.cpp
 	examples/compute_tof_from_files.cpp
+  examples/mirror_grid.cpp
 	examples/sim_2p_comp_reorder.cpp
 	examples/sim_2p_incomp.cpp
 	examples/wells_example.cpp
@@ -225,15 +240,10 @@ list (APPEND EXAMPLE_SOURCE_FILES
 # originally generated with the command:
 # find attic -name '*.c*' -printf '\t%p\n' | sort
 list (APPEND ATTIC_FILES
-	attic/bo_resprop_test.cpp
-	attic/pvt_test.cpp
-	attic/relperm_test.cpp
 	attic/test_cfs_tpfa.c
-	attic/test_ert.cpp
 	attic/test_jacsys.cpp
 	attic/test_lapack.cpp
 	attic/test_read_grid.c
-	attic/test_readpolymer.cpp
 	attic/test_read_vag.cpp
 	attic/test_writeVtkData.cpp
 	)
@@ -241,6 +251,7 @@ list (APPEND ATTIC_FILES
 # programs listed here will not only be compiled, but also marked for
 # installation
 list (APPEND PROGRAM_SOURCE_FILES
+  examples/mirror_grid.cpp
 	examples/sim_2p_comp_reorder.cpp
 	examples/sim_2p_incomp.cpp
 	)
@@ -255,6 +266,8 @@ list (APPEND PUBLIC_HEADER_FILES
 	opm/core/grid/FaceQuadrature.hpp
 	opm/core/grid/GridHelpers.hpp
 	opm/core/grid/GridManager.hpp
+	opm/core/grid/GridUtilities.hpp
+	opm/core/grid/MinpvProcessor.hpp
 	opm/core/grid/cart_grid.h
 	opm/core/grid/cornerpoint_grid.h
 	opm/core/grid/cpgpreprocess/facetopology.h
@@ -263,11 +276,8 @@ list (APPEND PUBLIC_HEADER_FILES
 	opm/core/grid/cpgpreprocess/uniquepoints.h
 	opm/core/io/eclipse/CornerpointChopper.hpp
 	opm/core/io/eclipse/EclipseGridInspector.hpp
-	opm/core/io/eclipse/EclipseGridParser.hpp
-	opm/core/io/eclipse/EclipseGridParserHelpers.hpp
 	opm/core/io/eclipse/EclipseUnits.hpp
 	opm/core/io/eclipse/EclipseWriter.hpp
-	opm/core/io/eclipse/SpecialEclipseFields.hpp
 	opm/core/io/eclipse/writeECLData.hpp
 	opm/core/io/OutputWriter.hpp
 	opm/core/io/vag/vag.hpp
@@ -324,12 +334,12 @@ list (APPEND PUBLIC_HEADER_FILES
 	opm/core/props/pvt/BlackoilPvtProperties.hpp
 	opm/core/props/pvt/PvtPropertiesBasic.hpp
 	opm/core/props/pvt/PvtPropertiesIncompFromDeck.hpp
-	opm/core/props/pvt/SinglePvtConstCompr.hpp
-	opm/core/props/pvt/SinglePvtDead.hpp
-	opm/core/props/pvt/SinglePvtDeadSpline.hpp
-	opm/core/props/pvt/SinglePvtInterface.hpp
-	opm/core/props/pvt/SinglePvtLiveGas.hpp
-	opm/core/props/pvt/SinglePvtLiveOil.hpp
+	opm/core/props/pvt/PvtConstCompr.hpp
+	opm/core/props/pvt/PvtDead.hpp
+	opm/core/props/pvt/PvtDeadSpline.hpp
+	opm/core/props/pvt/PvtInterface.hpp
+	opm/core/props/pvt/PvtLiveGas.hpp
+	opm/core/props/pvt/PvtLiveOil.hpp
 	opm/core/props/rock/RockBasic.hpp
 	opm/core/props/rock/RockCompressibility.hpp
 	opm/core/props/rock/RockFromDeck.hpp
@@ -341,14 +351,19 @@ list (APPEND PUBLIC_HEADER_FILES
 	opm/core/props/satfunc/SaturationPropsFromDeck.hpp
 	opm/core/props/satfunc/SaturationPropsFromDeck_impl.hpp
 	opm/core/props/satfunc/SaturationPropsInterface.hpp
+	opm/core/simulator/AdaptiveSimulatorTimer.hpp
+	opm/core/simulator/AdaptiveTimeStepping.hpp
+	opm/core/simulator/AdaptiveTimeStepping_impl.hpp
 	opm/core/simulator/BlackoilState.hpp
 	opm/core/simulator/EquilibrationHelpers.hpp
+	opm/core/simulator/PIDTimeStepControl.hpp
 	opm/core/simulator/SimulatorCompressibleTwophase.hpp
 	opm/core/simulator/SimulatorIncompTwophase.hpp
 	opm/core/simulator/SimulatorOutput.hpp
 	opm/core/simulator/SimulatorReport.hpp
 	opm/core/simulator/SimulatorState.hpp
 	opm/core/simulator/SimulatorTimer.hpp
+	opm/core/simulator/TimeStepControlInterface.hpp
 	opm/core/simulator/TwophaseState.hpp
 	opm/core/simulator/TwophaseState_impl.hpp
 	opm/core/simulator/WellState.hpp
@@ -380,6 +395,7 @@ list (APPEND PUBLIC_HEADER_FILES
 	opm/core/transport/reorder/tarjan.h
 	opm/core/utility/Average.hpp
 	opm/core/utility/ClassName.hpp
+	opm/core/utility/CompressedPropertyAccess.hpp
 	opm/core/utility/DataMap.hpp
 	opm/core/utility/ErrorMacros.hpp
 	opm/core/utility/Event.hpp
@@ -418,8 +434,11 @@ list (APPEND PUBLIC_HEADER_FILES
 	opm/core/utility/parameters/ParameterXML.hpp
 	opm/core/utility/parameters/tinyxml/tinystr.h
 	opm/core/utility/parameters/tinyxml/tinyxml.h
+	opm/core/utility/platform_dependent/disable_warnings.h
+	opm/core/utility/platform_dependent/reenable_warnings.h
 	opm/core/utility/PropertySystem.hpp
 	opm/core/utility/share_obj.hpp
+	opm/core/utility/thresholdPressures.hpp
 	opm/core/wells/InjectionSpecification.hpp
 	opm/core/wells/ProductionSpecification.hpp
 	opm/core/wells/WellCollection.hpp

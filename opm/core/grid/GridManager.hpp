@@ -30,9 +30,6 @@ struct grdecl;
 
 namespace Opm
 {
-
-    class EclipseGridParser;
-
     /// This class manages an Opm::UnstructuredGrid in the sense that it
     /// encapsulates creation and destruction of the grid.
     /// The following grid types can be constructed:
@@ -45,13 +42,18 @@ namespace Opm
     {
     public:
         /// Construct a 3d corner-point grid or tensor grid from a deck.
-        explicit GridManager(const Opm::EclipseGridParser& deck);
+        explicit GridManager(Opm::DeckConstPtr deck);
 
-        /// Construct a 3d corner-point grid or tensor grid from a deck.
-        explicit GridManager(Opm::DeckConstPtr newParserDeck);
-
-        /// Construct a grid from an EclipseState::EclipseGrid instance
+        /// Construct a grid from an EclipseState::EclipseGrid instance.
         explicit GridManager(Opm::EclipseGridConstPtr eclipseGrid);
+
+        /// Construct a grid from an EclipseState::EclipseGrid instance,
+        /// giving an explicit set of pore volumes to be used for MINPV
+        /// considerations.
+        /// \input[in] eclipseGrid    encapsulates a corner-point grid given from a deck
+        /// \input[in] poreVolumes    one element per logical cartesian grid element
+        GridManager(Opm::EclipseGridConstPtr eclipseGrid,
+                    const std::vector<double>& poreVolumes);
 
         /// Construct a 2d cartesian grid with cells of unit size.
         GridManager(int nx, int ny);
@@ -74,26 +76,21 @@ namespace Opm
         /// Destructor.
         ~GridManager();
 
-        void saveEGRID(const std::string& filename , const Opm::EclipseGridParser& deck);
-
         /// Access the managed UnstructuredGrid.
         /// The method is named similarly to c_str() in std::string,
         /// to make it clear that we are returning a C-compatible struct.
         const UnstructuredGrid* c_grid() const;
 
-        static void createGrdecl(Opm::DeckConstPtr newParserDeck, struct grdecl &grdecl);
+        static void createGrdecl(Opm::DeckConstPtr deck, struct grdecl &grdecl);
 
     private:
         // Disable copying and assignment.
         GridManager(const GridManager& other);
         GridManager& operator=(const GridManager& other);
 
-        // Construct corner-point grid from deck.
-        void initFromDeckCornerpoint(const Opm::EclipseGridParser& deck);
-        void initFromDeckCornerpoint(Opm::DeckConstPtr newParserDeck);
-        // Construct tensor grid from deck.
-        void initFromDeckTensorgrid(const Opm::EclipseGridParser& deck);
-        void initFromDeckTensorgrid(Opm::DeckConstPtr newParserDeck);
+        // Construct corner-point grid from EclipseGrid.
+        void initFromEclipseGrid(Opm::EclipseGridConstPtr eclipseGrid,
+                                 const std::vector<double>& poreVolumes);
 
         // The managed UnstructuredGrid.
         UnstructuredGrid* ug_;

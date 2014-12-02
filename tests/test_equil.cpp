@@ -336,8 +336,9 @@ BOOST_AUTO_TEST_CASE (DeckAllDead)
         grid(create_grid_cart3d(1, 1, 10), destroy_grid);
     Opm::ParserPtr parser(new Opm::Parser() );
     Opm::DeckConstPtr deck = parser->parseFile("deadfluids.DATA");
-    Opm::BlackoilPropertiesFromDeck props(deck, *grid, false);
-    Opm::Equil::DeckDependent::InitialStateComputer<Opm::DeckConstPtr> comp(props, deck, *grid, 10.0);
+    Opm::EclipseStateConstPtr eclipseState(new Opm::EclipseState(deck));
+    Opm::BlackoilPropertiesFromDeck props(deck, eclipseState, *grid, false);
+    Opm::Equil::DeckDependent::InitialStateComputer comp(props, deck, eclipseState, *grid, 10.0);
     const auto& pressures = comp.press();
     BOOST_REQUIRE(pressures.size() == 3);
     BOOST_REQUIRE(int(pressures[0].size()) == grid->number_of_cells);
@@ -349,8 +350,8 @@ BOOST_AUTO_TEST_CASE (DeckAllDead)
     // the true answer or something else.
     const double reltol = 1.0e-3;
     BOOST_CHECK_CLOSE(pressures[0][first] , 1.496329839e7   , reltol);
-    BOOST_CHECK_CLOSE(pressures[0][last ] , 1.50473245e7   , reltol);
-    BOOST_CHECK_CLOSE(pressures[1][last] , 1.50473245e7   , reltol);
+    BOOST_CHECK_CLOSE(pressures[0][last ] , 1.504526940e7   , reltol);
+    BOOST_CHECK_CLOSE(pressures[1][last] , 1.504526940e7   , reltol);
 }
 
 
@@ -362,7 +363,8 @@ BOOST_AUTO_TEST_CASE (CapillaryInversion)
     const UnstructuredGrid& grid = *(gm.c_grid());
     Opm::ParserPtr parser(new Opm::Parser() );
     Opm::DeckConstPtr deck = parser->parseFile("capillary.DATA");
-    Opm::BlackoilPropertiesFromDeck props(deck, grid, false);
+    Opm::EclipseStateConstPtr eclipseState(new Opm::EclipseState(deck));
+    Opm::BlackoilPropertiesFromDeck props(deck, eclipseState, grid, false);
 
     // Test the capillary inversion for oil-water.
     const int cell = 0;
@@ -414,9 +416,10 @@ BOOST_AUTO_TEST_CASE (DeckWithCapillary)
     const UnstructuredGrid& grid = *(gm.c_grid());
     Opm::ParserPtr parser(new Opm::Parser() );
     Opm::DeckConstPtr deck = parser->parseFile("capillary.DATA");
-    Opm::BlackoilPropertiesFromDeck props(deck, grid, false);
+    Opm::EclipseStateConstPtr eclipseState(new Opm::EclipseState(deck));
+    Opm::BlackoilPropertiesFromDeck props(deck, eclipseState, grid, false);
 
-    Opm::Equil::DeckDependent::InitialStateComputer<Opm::DeckConstPtr> comp(props, deck, grid, 10.0);
+    Opm::Equil::DeckDependent::InitialStateComputer comp(props, deck, eclipseState, grid, 10.0);
     const auto& pressures = comp.press();
     BOOST_REQUIRE(pressures.size() == 3);
     BOOST_REQUIRE(int(pressures[0].size()) == grid.number_of_cells);
@@ -428,13 +431,13 @@ BOOST_AUTO_TEST_CASE (DeckWithCapillary)
     // the true answer or something else.
     const double reltol = 1.0e-6;
     BOOST_CHECK_CLOSE(pressures[0][first] , 1.469769063e7   , reltol);
-    BOOST_CHECK_CLOSE(pressures[0][last ] , 1.545e7   , reltol);
-    BOOST_CHECK_CLOSE(pressures[1][last] , 1.546e7   , reltol);
+    BOOST_CHECK_CLOSE(pressures[0][last ] , 15452880.328284413   , reltol);
+    BOOST_CHECK_CLOSE(pressures[1][last] , 15462880.328284413   , reltol);
 
     const auto& sats = comp.saturation();
     const std::vector<double> s[3]{
-        { 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.425893333333, 0.774026666666, 1, 1, 1, 1, 1, 1, 1, 1, 1 },
-        { 0, 0, 0, 0.00736, 0.792746666666, 0.8, 0.8, 0.8, 0.8, 0.574106666666, 0.225973333333, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+        { 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.42192000000000002, 0.77802666666666664, 1, 1, 1, 1, 1, 1, 1, 1, 1 },
+        { 0, 0, 0, 0.00736, 0.792746666666, 0.8, 0.8, 0.8, 0.8, 0.57807999999999993, 0.22197333333333336, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
         { 0.8, 0.8, 0.8, 0.79264, 0.007253333333, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }
     };
     for (int phase = 0; phase < 3; ++phase) {
@@ -453,9 +456,10 @@ BOOST_AUTO_TEST_CASE (DeckWithCapillaryOverlap)
     const UnstructuredGrid& grid = *(gm.c_grid());
     Opm::ParserPtr parser(new Opm::Parser() );
     Opm::DeckConstPtr deck = parser->parseFile("capillary_overlap.DATA");
-    Opm::BlackoilPropertiesFromDeck props(deck, grid, false);
+    Opm::EclipseStateConstPtr eclipseState(new Opm::EclipseState(deck));
+    Opm::BlackoilPropertiesFromDeck props(deck, eclipseState, grid, false);
 
-    Opm::Equil::DeckDependent::InitialStateComputer<Opm::DeckConstPtr> comp(props, deck, grid, 9.80665);
+    Opm::Equil::DeckDependent::InitialStateComputer comp(props, deck, eclipseState, grid, 9.80665);
     const auto& pressures = comp.press();
     BOOST_REQUIRE(pressures.size() == 3);
     BOOST_REQUIRE(int(pressures[0].size()) == grid.number_of_cells);
@@ -514,9 +518,10 @@ BOOST_AUTO_TEST_CASE (DeckWithLiveOil)
     const UnstructuredGrid& grid = *(gm.c_grid());
     Opm::ParserPtr parser(new Opm::Parser() );
     Opm::DeckConstPtr deck = parser->parseFile("equil_liveoil.DATA");
-    Opm::BlackoilPropertiesFromDeck props(deck, grid, false);
+    Opm::EclipseStateConstPtr eclipseState(new Opm::EclipseState(deck));
+    Opm::BlackoilPropertiesFromDeck props(deck, eclipseState, grid, false);
 
-    Opm::Equil::DeckDependent::InitialStateComputer<Opm::DeckConstPtr> comp(props, deck, grid, 9.80665);
+    Opm::Equil::DeckDependent::InitialStateComputer comp(props, deck, eclipseState, grid, 9.80665);
     const auto& pressures = comp.press();
     BOOST_REQUIRE(pressures.size() == 3);
     BOOST_REQUIRE(int(pressures[0].size()) == grid.number_of_cells);
@@ -567,18 +572,18 @@ BOOST_AUTO_TEST_CASE (DeckWithLiveOil)
     }
     
     const auto& rs = comp.rs();
-    const std::vector<double> rs_opm {74.612335679539058, 74.649052116644228, 74.685786561426298, 74.722539022717172, // opm
-                                      74.759309509353145, 74.796098030174733, 74.8329045940269,   74.869729209758916, 
-                                      74.906571886224327, 75.090675116639048, 75.0,               75.0, 
-                                      75.0,               75.0,               75.0,               75.0, 
-                                      75.0,               75.0,               75.0,               75.0};
+    const std::vector<double> rs_opm {74.61233568, 74.64905212, 74.68578656, 74.72253902, // opm
+                                      74.75930951, 74.79609803, 74.83290459, 74.87519876,
+                                      74.96925416, 75.09067512, 75.0,        75.0, 
+                                      75.0,        75.0,        75.0,        75.0, 
+                                      75.0,        75.0,        75.0,        75.0};
     const std::vector<double> rs_ecl {74.612228, 74.648956, 74.685707, 74.722473,  // eclipse
                                       74.759254, 74.796051, 74.832870, 74.875145,
                                       74.969231, 75.090706, 75.000000, 75.000000,
                                       75.000000, 75.000000, 75.000000, 75.000000,
                                       75.000000, 75.000000, 75.000000, 75.000000}; 
     for (size_t i = 0; i < rs_opm.size(); ++i) {
-        //std::cout << std::setprecision(10) << sats[phase][i] << '\n';
+        //std::cout << std::setprecision(10) << rs[i] << '\n';
         BOOST_CHECK_CLOSE(rs[i], rs_opm[i], reltol);
         BOOST_CHECK_CLOSE(rs[i], rs_ecl[i], reltol_ecl);
     }
@@ -592,9 +597,10 @@ BOOST_AUTO_TEST_CASE (DeckWithLiveGas)
     const UnstructuredGrid& grid = *(gm.c_grid());
     Opm::ParserPtr parser(new Opm::Parser() );
     Opm::DeckConstPtr deck = parser->parseFile("equil_livegas.DATA");
-    Opm::BlackoilPropertiesFromDeck props(deck, grid, false);
+    Opm::EclipseStateConstPtr eclipseState(new Opm::EclipseState(deck));
+    Opm::BlackoilPropertiesFromDeck props(deck, eclipseState, grid, false);
 
-    Opm::Equil::DeckDependent::InitialStateComputer<Opm::DeckConstPtr> comp(props, deck, grid, 9.80665);
+    Opm::Equil::DeckDependent::InitialStateComputer comp(props, deck, eclipseState, grid, 9.80665);
     const auto& pressures = comp.press();
     BOOST_REQUIRE(pressures.size() == 3);
     BOOST_REQUIRE(int(pressures[0].size()) == grid.number_of_cells);
@@ -673,9 +679,10 @@ BOOST_AUTO_TEST_CASE (DeckWithRSVDAndRVVD)
     const UnstructuredGrid& grid = *(gm.c_grid());
     Opm::ParserPtr parser(new Opm::Parser() );
     Opm::DeckConstPtr deck = parser->parseFile("equil_rsvd_and_rvvd.DATA");
-    Opm::BlackoilPropertiesFromDeck props(deck, grid, false);
+    Opm::EclipseStateConstPtr eclipseState(new Opm::EclipseState(deck));
+    Opm::BlackoilPropertiesFromDeck props(deck, eclipseState, grid, false);
 
-    Opm::Equil::DeckDependent::InitialStateComputer<Opm::DeckConstPtr> comp(props, deck, grid, 9.80665);
+    Opm::Equil::DeckDependent::InitialStateComputer comp(props, deck, eclipseState, grid, 9.80665);
     const auto& pressures = comp.press();
     BOOST_REQUIRE(pressures.size() == 3);
     BOOST_REQUIRE(int(pressures[0].size()) == grid.number_of_cells);
@@ -729,11 +736,11 @@ BOOST_AUTO_TEST_CASE (DeckWithRSVDAndRVVD)
     
     const auto& rs = comp.rs();
     const std::vector<double> rs_opm { // opm
-        74.624983020822540, 74.659590408801634, 74.694380353364522, 74.729353362649505,
-        74.764509945812975, 74.799850613032362, 74.835375875509555, 74.87108624547416, 
-        74.906982236186707, 75.088917653469309, 52.5,               57.5, 
-        62.5,               67.5,               72.5,               76.45954840804761, 
-        76.70621044909619,  76.952877357524045, 77.199549133522638, 77.446225777283587};
+        74.62498302, 74.65959041, 74.69438035, 74.72935336,
+        74.76450995, 74.79985061, 74.83537588, 74.87527125,
+        74.96863769, 75.08891765, 52.5,        57.5,
+        62.5,        67.5,        72.5,        76.45954841,
+        76.70621045, 76.95287736, 77.19954913, 77.44622578};
 
     const std::vector<double> rs_ecl {  // eclipse
         74.625114, 74.659706, 74.694481, 74.729439,
@@ -758,7 +765,7 @@ BOOST_AUTO_TEST_CASE (DeckWithRSVDAndRVVD)
         0.82500002E-04, 0.87499997E-04, 0.92499999E-04, 0.97500000E-04};
          
     for (size_t i = 0; i < rv_opm.size(); ++i) {
-        //std::cout << std::setprecision(10) << sats[phase][i] << '\n';
+        //std::cout << std::setprecision(10) << rs[i] << '\n';
         BOOST_CHECK_CLOSE(rs[i], rs_opm[i], 100*reltol);
         BOOST_CHECK_CLOSE(rs[i], rs_ecl[i], reltol_ecl);
         BOOST_CHECK_CLOSE(rv[i], rv_opm[i], 100.*reltol);

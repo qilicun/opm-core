@@ -1045,101 +1045,6 @@ namespace Opm
         }
     } // anonymous namespace
 
-    std::shared_ptr<WellsGroupInterface> createWellsGroup(const std::string& name,
-                                                               const EclipseGridParser& deck)
-    {
-        PhaseUsage phase_usage = phaseUsageFromDeck(deck);
-
-        std::shared_ptr<WellsGroupInterface> return_value;
-        // First we need to determine whether it's a group or just a well:
-        bool isWell = false;
-        if (deck.hasField("WELSPECS")) {
-            WELSPECS wspecs = deck.getWELSPECS();
-            for (size_t i = 0; i < wspecs.welspecs.size(); i++) {
-                if (wspecs.welspecs[i].name_ == name) {
-                    isWell = true;
-                    break;
-                }
-            }
-        }
-        // For now, assume that if it isn't a well, it's a group
-
-        if (isWell) {
-            ProductionSpecification production_specification;
-            InjectionSpecification injection_specification;
-            if (deck.hasField("WCONINJE")) {
-                WCONINJE wconinje = deck.getWCONINJE();
-                for (size_t i = 0; i < wconinje.wconinje.size(); i++) {
-                    if (wconinje.wconinje[i].well_ == name) {
-                        WconinjeLine line = wconinje.wconinje[i];
-                        injection_specification.BHP_limit_ = line.BHP_limit_;
-                        injection_specification.injector_type_ = toInjectorType(line.injector_type_);
-                        injection_specification.control_mode_ = toInjectionControlMode(line.control_mode_);
-                        injection_specification.surface_flow_max_rate_ = line.surface_flow_max_rate_;
-                        injection_specification.reservoir_flow_max_rate_ = line.reservoir_flow_max_rate_;
-                        production_specification.guide_rate_ = 0.0; // We know we're not a producer
-                    }
-                }
-            }
-
-            if (deck.hasField("WCONPROD")) {
-                WCONPROD wconprod = deck.getWCONPROD();
-                for (size_t i = 0; i < wconprod.wconprod.size(); i++) {
-                    if (wconprod.wconprod[i].well_ == name) {
-                        WconprodLine line = wconprod.wconprod[i];
-                        production_specification.BHP_limit_ = line.BHP_limit_;
-                        production_specification.reservoir_flow_max_rate_ = line.reservoir_flow_max_rate_;
-                        production_specification.oil_max_rate_ = line.oil_max_rate_;
-                        production_specification.control_mode_ = toProductionControlMode(line.control_mode_);
-                        production_specification.water_max_rate_ = line.water_max_rate_;
-                        injection_specification.guide_rate_ = 0.0; // we know we're not an injector
-                    }
-                }
-            }
-            return_value.reset(new WellNode(name, production_specification, injection_specification, phase_usage));
-        } else {
-            InjectionSpecification injection_specification;
-            if (deck.hasField("GCONINJE")) {
-                GCONINJE gconinje = deck.getGCONINJE();
-                for (size_t i = 0; i < gconinje.gconinje.size(); i++) {
-                    if (gconinje.gconinje[i].group_ == name) {
-                        GconinjeLine line = gconinje.gconinje[i];
-                        injection_specification.injector_type_ = toInjectorType(line.injector_type_);
-                        injection_specification.control_mode_ = toInjectionControlMode(line.control_mode_);
-                        injection_specification.surface_flow_max_rate_ = line.surface_flow_max_rate_;
-                        injection_specification.reservoir_flow_max_rate_ = line.resv_flow_max_rate_;
-                        injection_specification.reinjection_fraction_target_ = line.reinjection_fraction_target_;
-                        injection_specification.voidage_replacment_fraction_ = line.voidage_replacement_fraction_;
-                    }
-                }
-            }
-
-            ProductionSpecification production_specification;
-            if (deck.hasField("GCONPROD")) {
-                std::cout << "Searching in gconprod " << std::endl;
-                std::cout << "name= " << name << std::endl;
-                GCONPROD gconprod = deck.getGCONPROD();
-                for (size_t i = 0; i < gconprod.gconprod.size(); i++) {
-                    if (gconprod.gconprod[i].group_ == name) {
-                        GconprodLine line = gconprod.gconprod[i];
-                        production_specification.oil_max_rate_ = line.oil_max_rate_;
-                        std::cout << "control_mode = " << line.control_mode_ << std::endl;
-                        production_specification.control_mode_ = toProductionControlMode(line.control_mode_);
-                        production_specification.water_max_rate_ = line.water_max_rate_;
-                        production_specification.gas_max_rate_ = line.gas_max_rate_;
-                        production_specification.liquid_max_rate_ = line.liquid_max_rate_;
-                        production_specification.procedure_ = toProductionProcedure(line.procedure_);
-                        production_specification.reservoir_flow_max_rate_ = line.resv_max_rate_;
-                    }
-                }
-            }
-
-            return_value.reset(new WellsGroup(name, production_specification, injection_specification, phase_usage));
-        }
-
-        return return_value;
-    }
-
     std::shared_ptr<WellsGroupInterface> createGroupWellsGroup(GroupConstPtr group, size_t timeStep, const PhaseUsage& phase_usage )
     {
         InjectionSpecification injection_specification;
@@ -1166,6 +1071,15 @@ namespace Opm
         return wells_group;
     }
 
+
+    /*
+      Wells which are shut with the WELOPEN or WCONPROD keywords
+      typically will not have any valid control settings, it is then
+      impossible to set a valid control mode. The Schedule::Well
+      objects from opm-parser have the possible well controle mode
+      'CMODE_UNDEFINED' - we do not carry that over the specification
+      objects here.
+     */
     std::shared_ptr<WellsGroupInterface> createWellWellsGroup(WellConstPtr well, size_t timeStep, const PhaseUsage& phase_usage )
     {
         InjectionSpecification injection_specification;
@@ -1174,19 +1088,23 @@ namespace Opm
             const WellInjectionProperties& properties = well->getInjectionProperties(timeStep);
             injection_specification.BHP_limit_ = properties.BHPLimit;
             injection_specification.injector_type_ = toInjectorType(WellInjector::Type2String(properties.injectorType));
-            injection_specification.control_mode_ = toInjectionControlMode(WellInjector::ControlMode2String(properties.controlMode));
             injection_specification.surface_flow_max_rate_ = properties.surfaceInjectionRate;
             injection_specification.reservoir_flow_max_rate_ = properties.reservoirInjectionRate;
             production_specification.guide_rate_ = 0.0; // We know we're not a producer
+            if (properties.controlMode != WellInjector::CMODE_UNDEFINED) {
+                injection_specification.control_mode_ = toInjectionControlMode(WellInjector::ControlMode2String(properties.controlMode));
+            }
         }
         else if (well->isProducer(timeStep)) {
             const WellProductionProperties& properties = well->getProductionProperties(timeStep);
             production_specification.BHP_limit_ = properties.BHPLimit;
             production_specification.reservoir_flow_max_rate_ = properties.ResVRate;
             production_specification.oil_max_rate_ = properties.OilRate;
-            production_specification.control_mode_ = toProductionControlMode(WellProducer::ControlMode2String(properties.controlMode));
             production_specification.water_max_rate_ = properties.WaterRate;
             injection_specification.guide_rate_ = 0.0; // we know we're not an injector
+            if (properties.controlMode != WellProducer::CMODE_UNDEFINED) {
+                production_specification.control_mode_ = toProductionControlMode(WellProducer::ControlMode2String(properties.controlMode));
+            }
         }
         std::shared_ptr<WellsGroupInterface> wells_group(new WellNode(well->name(), production_specification, injection_specification, phase_usage));
         return wells_group;

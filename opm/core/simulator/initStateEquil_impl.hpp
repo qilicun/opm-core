@@ -22,6 +22,7 @@
 
 #include <opm/core/grid.h>
 #include <opm/core/props/BlackoilPhases.hpp>
+#include <opm/core/simulator/initState.hpp>
 
 #include <cassert>
 #include <cmath>
@@ -393,20 +394,16 @@ namespace Opm
 
                 assign(G, opress, z0, cells, press);
 
-                po_woc = -std::numeric_limits<double>::max();
-                po_goc = -std::numeric_limits<double>::max();
-
                 const double woc = reg.zwoc();
-                // Compute Oil pressure at WOC
                 if      (z0 > woc) { po_woc = opress[0](woc); } // WOC above datum
                 else if (z0 < woc) { po_woc = opress[1](woc); } // WOC below datum
                 else               { po_woc = p0;             } // WOC *at*  datum
 
                 const double goc = reg.zgoc();
-                // Compute Oil pressure at GOC
                 if      (z0 > goc) { po_goc = opress[0](goc); } // GOC above datum
                 else if (z0 < goc) { po_goc = opress[1](goc); } // GOC below datum
                 else               { po_goc = p0;             } // GOC *at*  datum
+
             }
 
             template <class Region,
@@ -562,6 +559,10 @@ namespace Opm
             const double zwoc = reg.zwoc ();
             const double zgoc = reg.zgoc ();
 
+            // make sure goc and woc is within the span for the phase pressure calculation
+            span[0] = std::min(span[0],zgoc);
+            span[1] = std::max(span[1],zwoc);
+
             if (! ((zgoc > z0) || (z0 > zwoc))) {
                 // Datum depth in oil zone  (zgoc <= z0 <= zwoc)
                 Details::equilibrateOWG(G, reg, grav, span, cells, press);
@@ -577,9 +578,11 @@ namespace Opm
 
         template <class Region, class CellRange>
         std::vector< std::vector<double> >
-        phaseSaturations(const Region&           reg,
+        phaseSaturations(const UnstructuredGrid& G,
+                         const Region&           reg,
                          const CellRange&        cells,
-                         const BlackoilPropertiesInterface& props,
+                         BlackoilPropertiesInterface& props,
+                         const std::vector<double> swat_init,
                          std::vector< std::vector<double> >& phase_pressures)
         {
             const double z0   = reg.datum();
@@ -596,6 +599,8 @@ namespace Opm
             double smin[BlackoilPhases::MaxNumPhases] = { 0.0 };
             double smax[BlackoilPhases::MaxNumPhases] = { 0.0 };
 
+            const double* const cc  = & G.cell_centroids[0];
+
             const bool water = reg.phaseUsage().phase_used[BlackoilPhases::Aqua];
             const bool gas = reg.phaseUsage().phase_used[BlackoilPhases::Vapour];
             const int oilpos = reg.phaseUsage().phase_pos[BlackoilPhases::Liquid];
@@ -609,51 +614,85 @@ namespace Opm
                 // inverting capillary pressure functions.
                 double sw = 0.0;
                 if (water) {
-                    const double pcov = phase_pressures[oilpos][local_index] - phase_pressures[waterpos][local_index];
-                    sw = satFromPc(props, waterpos, cell, pcov);
-                    phase_saturations[waterpos][local_index] = sw;
+                    if (isConstPc(props,waterpos,cell)){
+                        const int nd = G.dimensions;
+                        const double cellDepth  = cc[nd * cell + nd-1];
+                        sw = satFromDepth(props,cellDepth,zwoc,waterpos,cell,false);
+                        phase_saturations[waterpos][local_index] = sw;
+                    }
+                    else{
+                        const double pcov = phase_pressures[oilpos][local_index] - phase_pressures[waterpos][local_index];
+                        if (swat_init.empty()) { // Invert Pc to find sw
+                            sw = satFromPc(props, waterpos, cell, pcov);
+                            phase_saturations[waterpos][local_index] = sw;
+                        } else { // Scale Pc to reflect imposed sw
+                            sw = swat_init[cell];
+                            props.swatInitScaling(cell, pcov, sw);
+                            phase_saturations[waterpos][local_index] = sw;
+                        }
+                    }
                 }
                 double sg = 0.0;
                 if (gas) {
-                    // Note that pcog is defined to be (pg - po), not (po - pg).
-                    const double pcog = phase_pressures[gaspos][local_index] - phase_pressures[oilpos][local_index];
-                    const double increasing = true; // pcog(sg) expected to be increasing function
-                    sg = satFromPc(props, gaspos, cell, pcog, increasing);
-                    phase_saturations[gaspos][local_index] = sg;
+                    if (isConstPc(props,gaspos,cell)){
+                        const int nd = G.dimensions;
+                        const double cellDepth  = cc[nd * cell + nd-1];
+                        sg = satFromDepth(props,cellDepth,zgoc,gaspos,cell,true);
+                        phase_saturations[gaspos][local_index] = sg;
+                    }
+                    else{
+                        // Note that pcog is defined to be (pg - po), not (po - pg).
+                        const double pcog = phase_pressures[gaspos][local_index] - phase_pressures[oilpos][local_index];
+                        const double increasing = true; // pcog(sg) expected to be increasing function
+                        sg = satFromPc(props, gaspos, cell, pcog, increasing);
+                        phase_saturations[gaspos][local_index] = sg;
+                    }
                 }
-                bool overlap = false;
                 if (gas && water && (sg + sw > 1.0)) {
                     // Overlapping gas-oil and oil-water transition
                     // zones can lead to unphysical saturations when
                     // treated as above. Must recalculate using gas-water
                     // capillary pressure.
                     const double pcgw = phase_pressures[gaspos][local_index] - phase_pressures[waterpos][local_index];
+                    if (! swat_init.empty()) { 
+                        // Re-scale Pc to reflect imposed sw for vanishing oil phase.
+                        // This seems consistent with ecl, and fails to honour 
+                        // swat_init in case of non-trivial gas-oil cap pressure.
+                        props.swatInitScaling(cell, pcgw, sw);
+                    }
                     sw = satFromSumOfPcs(props, waterpos, gaspos, cell, pcgw);
                     sg = 1.0 - sw;
                     phase_saturations[waterpos][local_index] = sw;
                     phase_saturations[gaspos][local_index] = sg;
-                    overlap = true;
+                    // Adjust oil pressure according to gas saturation and cap pressure
+                    double pc[BlackoilPhases::MaxNumPhases];
+                    double sat[BlackoilPhases::MaxNumPhases];
+                    sat[gaspos] = sg;
+                    props.capPress(1, sat, &cell, pc, 0);                   
+                    phase_pressures[oilpos][local_index] = phase_pressures[gaspos][local_index] - pc[gaspos];
                 }
                 phase_saturations[oilpos][local_index] = 1.0 - sw - sg;
                 
                 // Adjust phase pressures for max and min saturation ...
                 double pc[BlackoilPhases::MaxNumPhases];
                 double sat[BlackoilPhases::MaxNumPhases];
-                if (sw > smax[waterpos]-1.0e-6) {
+                double threshold_sat = 1.0e-6;
+
+                if (sw > smax[waterpos]-threshold_sat ) {
                     sat[waterpos] = smax[waterpos];
                     props.capPress(1, sat, &cell, pc, 0);                   
                     phase_pressures[oilpos][local_index] = phase_pressures[waterpos][local_index] + pc[waterpos];
-                } else if (overlap || sg > smax[gaspos]-1.0e-6) {
+                } else if (sg > smax[gaspos]-threshold_sat) {
                     sat[gaspos] = smax[gaspos];
                     props.capPress(1, sat, &cell, pc, 0);                   
                     phase_pressures[oilpos][local_index] = phase_pressures[gaspos][local_index] - pc[gaspos];
                 }
-                if (sg < smin[gaspos]+1.0e-6) {
+                if (sg < smin[gaspos]+threshold_sat) {
                     sat[gaspos] = smin[gaspos];
                     props.capPress(1, sat, &cell, pc, 0);
                     phase_pressures[gaspos][local_index] = phase_pressures[oilpos][local_index] + pc[gaspos];
                 }
-                if (sw < smin[waterpos]+1.0e-6) {
+                if (sw < smin[waterpos]+threshold_sat) {
                     sat[waterpos] = smin[waterpos];
                     props.capPress(1, sat, &cell, pc, 0);
                     phase_pressures[waterpos][local_index] = phase_pressures[oilpos][local_index] - pc[waterpos];
@@ -736,13 +775,14 @@ namespace Opm
      * \param[in] gravity  Acceleration of gravity, assumed to be in Z direction.
      */
     void initStateEquil(const UnstructuredGrid& grid,
-                        const BlackoilPropertiesInterface& props,
-                        const EclipseGridParser& deck,
+                        BlackoilPropertiesInterface& props,
+                        const Opm::DeckConstPtr deck,
+                        const Opm::EclipseStateConstPtr eclipseState,
                         const double gravity,
                         BlackoilState& state)
     {
-        typedef Equil::DeckDependent::InitialStateComputer<EclipseGridParser> ISC;
-        ISC isc(props, deck, grid, gravity);
+        typedef Equil::DeckDependent::InitialStateComputer ISC;
+        ISC isc(props, deck, eclipseState, grid, gravity);
         const auto pu = props.phaseUsage();
         const int ref_phase = pu.phase_used[BlackoilPhases::Liquid]
             ? pu.phase_pos[BlackoilPhases::Liquid]
@@ -751,27 +791,7 @@ namespace Opm
         state.saturation() = convertSats(isc.saturation());
         state.gasoilratio() = isc.rs();
         state.rv() = isc.rv();
-        // TODO: state.surfacevol() must be computed from s, rs, rv.
-    }
-    
-    
-    void initStateEquil(const UnstructuredGrid& grid,
-                        const BlackoilPropertiesInterface& props,
-                        const Opm::DeckConstPtr newParserDeck,
-                        const double gravity,
-                        BlackoilState& state)
-    {
-        typedef Equil::DeckDependent::InitialStateComputer<Opm::DeckConstPtr> ISC;
-        ISC isc(props, newParserDeck, grid, gravity);
-        const auto pu = props.phaseUsage();
-        const int ref_phase = pu.phase_used[BlackoilPhases::Liquid]
-            ? pu.phase_pos[BlackoilPhases::Liquid]
-            : pu.phase_pos[BlackoilPhases::Aqua];
-        state.pressure() = isc.press()[ref_phase];
-        state.saturation() = convertSats(isc.saturation());
-        state.gasoilratio() = isc.rs();
-        state.rv() = isc.rv();
-        // TODO: state.surfacevol() must be computed from s, rs, rv.
+        initBlackoilSurfvolUsingRSorRV(grid, props, state);
     }
 
 

@@ -21,6 +21,7 @@
 #define OPM_INCOMPPROPERTIESFROMDECK_HEADER_INCLUDED
 
 #include <opm/parser/eclipse/Deck/Deck.hpp>
+#include <opm/parser/eclipse/EclipseState/EclipseState.hpp>
 #include <opm/core/props/IncompPropertiesInterface.hpp>
 #include <opm/core/props/rock/RockFromDeck.hpp>
 #include <opm/core/props/pvt/PvtPropertiesIncompFromDeck.hpp>
@@ -47,18 +48,12 @@ namespace Opm
     public:
         /// Initialize from deck and grid.
         /// \param  deck         Deck input parser
+        /// \param  eclState        The EclipseState (processed deck) produced by the opm-parser code
         /// \param  grid         Grid to which property object applies, needed for the
         ///                      mapping from cell indices (typically from a processed grid)
         ///                      to logical cartesian indices consistent with the deck.
-        IncompPropertiesFromDeck(const EclipseGridParser& deck,
-                                 const UnstructuredGrid& grid);
-
-        /// Initialize from deck and grid.
-        /// \param  deck         Deck input parser
-        /// \param  grid         Grid to which property object applies, needed for the
-        ///                      mapping from cell indices (typically from a processed grid)
-        ///                      to logical cartesian indices consistent with the deck.
-        IncompPropertiesFromDeck(Opm::DeckConstPtr newParserDeck,
+        IncompPropertiesFromDeck(Opm::DeckConstPtr deck,
+                                 Opm::EclipseStateConstPtr eclState,
                                  const UnstructuredGrid& grid);
 
         /// Destructor.

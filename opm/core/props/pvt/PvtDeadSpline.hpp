@@ -17,14 +17,13 @@
   along with OPM.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef OPM_SINGLEPVTDEADSPLINE_HEADER_INCLUDED
-#define OPM_SINGLEPVTDEADSPLINE_HEADER_INCLUDED
+#ifndef OPM_PVTDEADSPLINE_HEADER_INCLUDED
+#define OPM_PVTDEADSPLINE_HEADER_INCLUDED
 
-#include <opm/core/props/pvt/SinglePvtInterface.hpp>
+#include <opm/core/props/pvt/PvtInterface.hpp>
 #include <opm/core/utility/UniformTableLinear.hpp>
 
-#include <opm/parser/eclipse/Utility/PvdoTable.hpp>
-#include <opm/parser/eclipse/Utility/PvdgTable.hpp>
+#include <opm/parser/eclipse/EclipseState/EclipseState.hpp>
 
 #include <vector>
 
@@ -38,18 +37,21 @@ namespace Opm
     /// are expected to be of size n, size n and n*num_phases, respectively.
     /// Output arrays shall be of size n, and must be valid before
     /// calling the method.
-    class SinglePvtDeadSpline : public SinglePvtInterface
+    class PvtDeadSpline : public PvtInterface
     {
     public:
-        typedef std::vector<std::vector<std::vector<double> > > table_t;
+        PvtDeadSpline();
 
-        SinglePvtDeadSpline(const table_t& pvd_table, const int samples);
-        SinglePvtDeadSpline(const Opm::PvdoTable &pvdoTable, int samples);
-        SinglePvtDeadSpline(const Opm::PvdgTable &pvdgTable, int samples);
-        virtual ~SinglePvtDeadSpline();
+        void initFromOil(const std::vector<Opm::PvdoTable>& pvdoTables,
+                         int numSamples);
+        void initFromGas(const std::vector<Opm::PvdgTable>& pvdgTables,
+                         int numSamples);
+
+        virtual ~PvtDeadSpline();
 
         /// Viscosity as a function of p and z.
         virtual void mu(const int n,
+                        const int* pvtTableIdx,
                         const double* p,
                         const double* z,
                         double* output_mu) const;
@@ -57,6 +59,7 @@ namespace Opm
         /// Viscosity and its derivatives as a function of p and r.
         /// The fluid is considered saturated if r >= rsSat(p).
         virtual void mu(const int n,
+                        const int* pvtTableIdx,
                         const double* p,
                         const double* r,
                         double* output_mu,
@@ -66,6 +69,7 @@ namespace Opm
         /// Viscosity as a function of p and r.
         /// State condition determined by 'cond'.
         virtual void mu(const int n,
+                        const int* pvtTableIdx,
                         const double* p,
                         const double* r,
                         const PhasePresence* cond,
@@ -75,12 +79,14 @@ namespace Opm
 
         /// Formation volume factor as a function of p and z.
         virtual void B(const int n,
+                       const int* pvtTableIdx,
                        const double* p,
                        const double* z,
                        double* output_B) const;
 
         /// Formation volume factor and p-derivative as functions of p and z.
         virtual void dBdp(const int n,
+                          const int* pvtTableIdx,
                           const double* p,
                           const double* z,
                           double* output_B,
@@ -89,6 +95,7 @@ namespace Opm
         /// The inverse of the formation volume factor b = 1 / B, and its derivatives as a function of p and r.
         /// The fluid is considered saturated if r >= rsSat(p).
         virtual void b(const int n,
+                       const int* pvtTableIdx,
                        const double* p,
                        const double* r,
                        double* output_b,
@@ -98,6 +105,7 @@ namespace Opm
         /// The inverse of the formation volume factor b = 1 / B, and its derivatives as a function of p and r.
         /// State condition determined by 'cond'.
         virtual void b(const int n,
+                       const int* pvtTableIdx,
                        const double* p,
                        const double* r,
                        const PhasePresence* cond,
@@ -107,35 +115,47 @@ namespace Opm
 
         /// Solution gas/oil ratio and its derivatives at saturated conditions as a function of p.
         virtual void rsSat(const int n,
+                           const int* pvtTableIdx,
                           const double* p,
                           double* output_rsSat,
                           double* output_drsSatdp) const;
 
         /// Vapor oil/gas ratio and its derivatives at saturated conditions as a function of p.
         virtual void rvSat(const int n,
+                           const int* pvtTableIdx,
                           const double* p,
                           double* output_rvSat,
                           double* output_drvSatdp) const;
 
         /// Solution factor as a function of p and z.
         virtual void R(const int n,
+                       const int* pvtTableIdx,
                        const double* p,
                        const double* z,
                        double* output_R) const;
 
         /// Solution factor and p-derivative as functions of p and z.
         virtual void dRdp(const int n,
+                          const int* pvtTableIdx,
                           const double* p,
                           const double* z,
                           double* output_R,
                           double* output_dRdp) const;
     private:
-        // PVT properties of dry gas or dead oil
-        UniformTableLinear<double> b_;
-        UniformTableLinear<double> viscosity_;
+        int getTableIndex_(const int* pvtTableIdx, int cellIdx) const
+        {
+            if (!pvtTableIdx)
+                return 0;
+            return pvtTableIdx[cellIdx];
+        }
+
+        // PVT properties of dry gas or dead oil. We need to store one
+        // table per PVT region.
+        std::vector<UniformTableLinear<double> > b_;
+        std::vector<UniformTableLinear<double> > viscosity_;
     };
 
 }
 
-#endif // OPM_SINGLEPVTDEADSPLINE_HEADER_INCLUDED
+#endif // OPM_PVTDEADSPLINE_HEADER_INCLUDED
 

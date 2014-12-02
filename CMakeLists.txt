@@ -45,7 +45,7 @@ include (${project}-prereqs)
 include (CMakeLists_files.cmake)
 
 macro (config_hook)
-#	opm_need_version_of ("dune-common")
+	opm_need_version_of ("dune-common")
   opm_need_version_of ("dune-istl")
 endmacro (config_hook)
 
@@ -113,6 +113,9 @@ endmacro (sources_hook)
 macro (fortran_hook)
 endmacro (fortran_hook)
 
+macro (files_hook)
+endmacro (files_hook)
+
 macro (tests_hook)
 	cond_disable_test ("ERT")
 endmacro (tests_hook)
@@ -128,4 +131,8 @@ endmacro (install_hook)
 # all setup common to the OPM library modules is done here
 include (OpmLibMain)
 
-
+add_custom_target(check-commits
+									COMMAND ${CMAKE_COMMAND}
+													-DPROJECT_SOURCE_DIR=${PROJECT_SOURCE_DIR}
+													-DCMAKE_BINARY_DIR=${CMAKE_BINARY_DIR}
+													-P ${PROJECT_SOURCE_DIR}/cmake/Scripts/CheckCommits.cmake)

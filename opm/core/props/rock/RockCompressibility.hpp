@@ -21,13 +21,13 @@
 #define OPM_ROCKCOMPRESSIBILITY_HEADER_INCLUDED
 
 #include <opm/parser/eclipse/Deck/Deck.hpp>
+#include <opm/parser/eclipse/EclipseState/EclipseState.hpp>
 
 #include <vector>
 
 namespace Opm
 {
 
-    class EclipseGridParser;
     namespace parameter { class ParameterGroup; }
 
     class RockCompressibility
@@ -35,11 +35,8 @@ namespace Opm
     public:
         /// Construct from input deck.
         /// Looks for the keywords ROCK and ROCKTAB.
-        RockCompressibility(const EclipseGridParser& deck);
-
-        /// Construct from input deck.
-        /// Looks for the keywords ROCK and ROCKTAB.
-        RockCompressibility(Opm::DeckConstPtr newParserDeck);
+        RockCompressibility(Opm::DeckConstPtr deck,
+                            Opm::EclipseStateConstPtr eclipseState);
 
         /// Construct from parameters.
         /// Accepts the following parameters (with defaults).

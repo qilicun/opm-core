@@ -157,9 +157,11 @@ namespace Opm
     ///                    matrix A = RB^{-1} which relates z to u by z = Au. The matrices
     ///                    are assumed to be in Fortran order, and are typically the result
     ///                    of a call to the method matrix().
+    /// \param[in]  cells  The index of the grid cell of each data point.
     /// \param[out] rho    Array of nP density values, array must be valid before calling.
     void BlackoilPropertiesBasic::density(const int n,
                                           const double* A,
+                                          const int* /*cells*/,
                                           double* rho) const
     {
         const int np = numPhases();
@@ -177,7 +179,7 @@ namespace Opm
 
     /// Densities of stock components at surface conditions.
     /// \return Array of P density values.
-    const double* BlackoilPropertiesBasic::surfaceDensity() const
+    const double* BlackoilPropertiesBasic::surfaceDensity(int /*cellIdx*/) const
     {
         return pvt_.surfaceDensities();
     }
@@ -236,6 +238,17 @@ namespace Opm
         satprops_.satRange(n, smin, smax);
     }
 
+
+    /// Update capillary pressure scaling according to pressure diff. and initial water saturation.
+    /// \param[in]     cell   Cell index. 
+    /// \param[in]     pcow   P_oil - P_water.
+    /// \param[in/out] swat   Water saturation. / Possibly modified Water saturation.      
+    void BlackoilPropertiesBasic::swatInitScaling(const int /*cell*/, 
+                                                  const double /*pcow*/, 
+                                                  double& /*swat*/)
+    {
+        OPM_THROW(std::runtime_error, "BlackoilPropertiesBasic::swatInitScaling()  --  not implemented.");
+    }
 
 } // namespace Opm
 
