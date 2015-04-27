@@ -244,6 +244,7 @@ list (APPEND EXAMPLE_SOURCE_FILES
 	examples/sim_2p_comp_reorder.cpp
 	examples/sim_2p_incomp.cpp
 	examples/wells_example.cpp
+    examples/test_transhelper.cpp
 	tutorials/tutorial1.cpp
 	tutorials/tutorial2.cpp
 	tutorials/tutorial3.cpp
@@ -283,6 +284,7 @@ list (APPEND PUBLIC_HEADER_FILES
 	opm/core/grid/MinpvProcessor.hpp
 	opm/core/grid/cart_grid.h
 	opm/core/grid/cornerpoint_grid.h
+    opm/core/grid/CpGrid.hpp
 	opm/core/grid/cpgpreprocess/facetopology.h
 	opm/core/grid/cpgpreprocess/geometry.h
 	opm/core/grid/cpgpreprocess/preprocess.h
