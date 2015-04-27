@@ -27,6 +27,8 @@
 #include <vector>
 #include <array>
 #include <algorithm>
+#include <iostream>
+#include <string>
 
 namespace Opm {
 namespace TransHelper {
@@ -43,15 +45,23 @@ namespace TransHelper {
         double cell_volume;
     };
 
+    void printVertex(const vertex& v, const std::string& s) 
+    {
+        std::cout << s << " (";
+        for (int i = 0; i < 3; ++i) {
+            std::cout << v[i] << ", ";
+        }
+        std::cout << ")" << std::endl;
+    }
     void createCpGridCells(const UnstructuredGrid& grid,
                            //const std::vector<int>& actnum,
                            std::vector<Simplex>& cpcell)
     {
-        Simplex cell;
         const int nc = grid.number_of_cells;
         const int dim = grid.dimensions;
         
         for (int c = 0; c < nc; ++c) {
+            Simplex cell;
             std::vector<vertex> nodes;
             const double* cc = Opm::UgGridHelpers::cellCentroid(grid, c);
             std::copy(cc, cc+dim, cell.cell_centroid.begin());
@@ -79,6 +89,7 @@ namespace TransHelper {
                     nodes.push_back(tmp3);
                 }
             }
+            
             // Uniform the normals.
             for (int f = 0; f < 6; ++f) {
                 for (int n = 0; n < 3; ++n) {

@@ -39,5 +39,16 @@ int main(int argc, char** argv)
     std::vector<Opm::TransHelper::Simplex> cpcell;
     createCpGridCells(*grid->c_grid(), cpcell);
 
+    
+    for (size_t c = 0; c < cpcell.size(); ++c) {
+        std::cout << "cell " << c << std::endl;
+        TransHelper::printVertex(cpcell[c].cell_centroid, "cell_centroid");
+        //TransHelper::printVertex(cpcell[c].cell_centroid, "cell_centroid");
+        
+        for (size_t n = 0; n < cpcell[c].corner.size(); ++n) {
+            TransHelper::printVertex(cpcell[c].corner[n], "cell_corner");
+        }
+    }
+
     return 0;
 }
