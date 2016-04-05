@@ -1,5 +1,6 @@
 /*
   Copyright 2012 SINTEF ICT, Applied Mathematics.
+  Copyright 2016 Statoil ASA.
 
   This file is part of the Open Porous Media project (OPM).
 
@@ -25,6 +26,7 @@
 #include <opm/core/grid/cornerpoint_grid.h>
 #include <opm/core/grid/MinpvProcessor.hpp>
 #include <opm/common/ErrorMacros.hpp>
+#include <opm/common/OpmLog/OpmLog.hpp>
 #include <opm/parser/eclipse/Deck/DeckItem.hpp>
 #include <opm/parser/eclipse/Deck/DeckKeyword.hpp>
 #include <opm/parser/eclipse/Deck/DeckRecord.hpp>
@@ -111,6 +113,7 @@ namespace Opm
     {
         ug_ = read_grid(input_filename.c_str());
         if (!ug_) {
+            OpmLog::error("Failed to read grid from file"+input_filename);
             OPM_THROW(std::runtime_error, "Failed to read grid from file " << input_filename);
         }
     }
@@ -172,6 +175,7 @@ namespace Opm
             eclipseGrid->getPinchThresholdThickness() : 0.0;
         ug_ = create_grid_cornerpoint(&g, z_tolerance);
         if (!ug_) {
+            OpmLog::error("Failed to construct corner-point grid from Eclipse grid");
             OPM_THROW(std::runtime_error, "Failed to construct grid.");
         }
     }
@@ -201,6 +205,7 @@ namespace Opm
             dims[1] = specgridKeyword.getRecord(0).getItem(1).get< int >(0);
             dims[2] = specgridKeyword.getRecord(0).getItem(2).get< int >(0);
         } else {
+            OpmLog::error("Deck must have either DIMENS or SPECGRID keyword.");
             OPM_THROW(std::runtime_error, "Deck must have either DIMENS or SPECGRID.");
         }
 
